@@ -1,4 +1,4 @@
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from django.shortcuts import render
 
 from blog.models import Comment, Post, Tag
@@ -55,7 +55,9 @@ def index(request):
     )
     most_fresh_posts = fresh_posts[:5]
 
-    most_popular_tags = Tag.objects.popular()[:5]
+    most_popular_tags = Tag.objects.prefetch_related(
+            Prefetch("posts", queryset=Tag.objects.popular())
+        )[:5]
 
     context = {
         "most_popular_posts": [
