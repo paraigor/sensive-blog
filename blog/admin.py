@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from blog.models import Comment, Post, Tag, User
+from blog.models import Comment, Post, Tag
 
 
 class TagInline(admin.TabularInline):
@@ -13,7 +13,6 @@ class PostAdmin(admin.ModelAdmin):
     raw_id_fields = ["author", "likes",]
     exclude = ["tags"]
     inlines = [TagInline]
-
 
 
 @admin.register(Comment)
