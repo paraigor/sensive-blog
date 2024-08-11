@@ -1,7 +1,7 @@
 from django.db.models import Count
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-from blog.models import Comment, Post, Tag
+from blog.models import Post, Tag
 
 
 def serialize_post(post):
@@ -29,14 +29,14 @@ def index(request):
     most_popular_posts = (
         Post.objects.popular()[:5]
         .fetch_with_comments_count()
-        .prefetch_related("author")
+        .select_related("author")
         .prefetch_related("tags")
     )
 
     most_fresh_posts = (
         Post.objects.annotate(num_comments=Count("comments"))
         .order_by("-published_at")[:5]
-        .prefetch_related("author")
+        .select_related("author")
         .prefetch_related("tags")
     )
 
@@ -53,8 +53,9 @@ def index(request):
 
 
 def post_detail(request, slug):
-    post = Post.objects.get(slug=slug)
-    comments = Comment.objects.filter(post=post).prefetch_related("author")
+    posts_with_likes_count = Post.objects.annotate(num_likes=Count("likes"))
+    post = get_object_or_404(posts_with_likes_count, slug=slug)
+    comments = post.comments.all().select_related("author")
     serialized_comments = []
     for comment in comments:
         serialized_comments.append(
@@ -70,7 +71,7 @@ def post_detail(request, slug):
         "text": post.text,
         "author": post.author.username,
         "comments": serialized_comments,
-        "likes_amount": post.likes.count(),
+        "likes_amount": post.num_likes,
         "image_url": post.image.url if post.image else None,
         "published_at": post.published_at,
         "slug": post.slug,
@@ -82,7 +83,7 @@ def post_detail(request, slug):
     most_popular_posts = (
         Post.objects.popular()[:5]
         .fetch_with_comments_count()
-        .prefetch_related("author")
+        .select_related("author")
         .prefetch_related("tags")
     )
 
@@ -97,24 +98,21 @@ def post_detail(request, slug):
 
 
 def tag_filter(request, tag_title):
-    tag = Tag.objects.get(title=tag_title)
+    tag = get_object_or_404(Tag, title=tag_title)
 
     most_popular_tags = Tag.objects.popular()[:5]
 
     most_popular_posts = (
         Post.objects.popular()[:5]
         .fetch_with_comments_count()
-        .prefetch_related("author")
+        .select_related("author")
         .prefetch_related("tags")
     )
 
-    related_posts = tag.posts.all()[:20]
-    related_posts_ids = [post.id for post in related_posts]
     related_posts_comments = (
-        Post.objects.prefetch_related("author")
+        tag.posts.fetch_with_comments_count()[:20]
+        .select_related("author")
         .prefetch_related("tags")
-        .filter(id__in=related_posts_ids)
-        .annotate(num_comments=Count("comments"))
     )
 
     context = {
