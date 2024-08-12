@@ -53,9 +53,8 @@ def index(request):
 
 
 def post_detail(request, slug):
-    posts_with_likes_count = Post.objects.annotate(num_likes=Count("likes"))
-    post = get_object_or_404(posts_with_likes_count, slug=slug)
-    comments = post.comments.all().select_related("author")
+    post = get_object_or_404(Post.objects.popular(), slug=slug)
+    comments = post.comments.select_related("author")
     serialized_comments = []
     for comment in comments:
         serialized_comments.append(
